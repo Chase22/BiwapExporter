@@ -13,20 +13,10 @@ import okhttp3.Response
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-object NinaClient {
+class NinaClient(private val url: String) : Runnable {
     private val client = OkHttpClient()
     private val objectMapper = ObjectMapper()
     private val LOGGER: Logger = LoggerFactory.getLogger(NinaClient::class.java)
-
-    private const val BASE_URL = "https://warnung.bund.de"
-
-    private val urls: List<String> = listOf(
-            "$BASE_URL/bbk.biwapp/warnmeldungen.json",
-            "$BASE_URL/bbk.katwarn/warnmeldungen.json",
-            "$BASE_URL/bbk.dwd/unwetter.json",
-            "$BASE_URL/bbk.lhp/hochwassermeldungen.json",
-            "$BASE_URL/bbk.mowas/gefahrendurchsagen.json"
-    )
 
     init {
         objectMapper.apply {
@@ -37,13 +27,7 @@ object NinaClient {
         }
     }
 
-    fun saveWarning() {
-        urls.stream().parallel().forEach {
-            callUrl(it)
-        }
-    }
-
-    private fun callUrl(url: String) {
+    override fun run() {
         val request: Request = Request.Builder().get().url(url).build()
 
         LOGGER.info("Calling $url")
@@ -63,6 +47,5 @@ object NinaClient {
                         .forEach { Warnings.addJson(it.first, it.second) }
             }
         }
-
     }
 }

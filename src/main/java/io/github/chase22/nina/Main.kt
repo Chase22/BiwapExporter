@@ -7,15 +7,25 @@ import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import kotlin.system.exitProcess
 
 object Main {
     @JvmStatic
     fun main(args: Array<String>) {
-        val LOGGER = LoggerFactory.getLogger(Main::class.java)
+        val logger = LoggerFactory.getLogger(Main::class.java)
 
-        LOGGER.info("Started")
+        val baseUrl = "https://warnung.bund.de"
 
+        val urls: List<String> = listOf(
+                "$baseUrl/bbk.biwapp/warnmeldungen.json",
+                "$baseUrl/bbk.katwarn/warnmeldungen.json",
+                "$baseUrl/bbk.dwd/unwetter.json",
+                "$baseUrl/bbk.lhp/hochwassermeldungen.json",
+                "$baseUrl/bbk.mowas/gefahrendurchsagen.json"
+        )
+
+        logger.info("Started")
+
+        // Setup Database
         val databaseUrl: String = System.getenv("NINA_DATABASE_URL") ?: "jdbc:h2:~/ninaTest"
         val databaseDriver: String = System.getenv("NINA_DATABASE_DRIVER") ?: "org.h2.Driver"
 
@@ -26,8 +36,14 @@ object Main {
             SchemaUtils.create(Warnings)
         }
 
-        NinaClient.saveWarning()
+        //Setup executor
+        val executor = Executor(urls.size);
 
-        LOGGER.info("Finished")
+        urls.stream().forEach {
+            logger.info("Adding executor for $it")
+            executor.submit(NinaClient(it), 10)
+        }
+
+        logger.info("Finished")
     }
 }
