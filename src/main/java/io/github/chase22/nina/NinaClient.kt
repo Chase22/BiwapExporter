@@ -38,7 +38,7 @@ object NinaClient {
     }
 
     fun saveWarning() {
-        urls.stream().parallel().map {
+        urls.stream().parallel().forEach {
             callUrl(it)
         }
     }
