@@ -1,0 +1,12 @@
+[Unit]
+Description=A Service exporting warnings from warnung.bund.de and writing them to a local db
+[Service]
+WorkingDirectory=/home/biwap
+ExecStart=/usr/bin/java -jar NinaExporter-1.0-all.jar
+Type=simple
+
+
+
+
+
+

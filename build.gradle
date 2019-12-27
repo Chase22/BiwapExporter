@@ -32,19 +32,47 @@ jar {
 remotes {
     pi {
         host = '192.168.2.200'
-        user = 'pi'
+        user = 'biwap'
         identity = file('/home/lukas/.ssh/id_rsa')
+    }
+}
+
+final deployHomeDir = '/home/biwap'
+final serviceDir = "${deployHomeDir}/.config/systemd/user"
+
+task deployService {
+    doLast {
+        ssh.run {
+            session(remotes.pi) {
+                try {
+                    String remoteContent = get from: "$serviceDir/BiwapExporter.service"
+                    if (!file("${project.projectDir}/BiwapExporter.service").text.contentEquals(remoteContent)) {
+                        println("Changes in Servicefile detected. Copying new File...")
+                        put from: "${project.projectDir}/BiwapExporter.service", into: serviceDir
+                        execute "systemctl --user daemon-reload"
+                    }
+                } catch (Exception e) {
+                    if (e.hasProperty('error') && e.error as String == 'SSH_FX_NO_SUCH_FILE') {
+                        println("Servicefile not found. Copying...")
+                        put from: "${project.projectDir}/BiwapExporter.service", into: serviceDir
+                    } else {
+                        throw new TaskExecutionException(deployService, e)
+                    }
+                }
+            }
+        }
     }
 }
 
 task deploy {
     dependsOn(assemble)
+    dependsOn(deployService)
     doLast {
         ssh.run {
             session(remotes.pi) {
-                put from: "${project.buildDir}/libs/NinaExporter-1.0-all.jar", into: '/home/java '
-                execute 'systemctl restart BiwapExporter.service'
-                execute 'systemctl status BiwapExporter.service'
+                put from: "${project.buildDir}/libs/NinaExporter-1.0-all.jar", into: deployHomeDir
+                execute 'systemctl --user restart BiwapExporter.service'
+                execute 'systemctl --user status BiwapExporter.service'
             }
         }
     }
