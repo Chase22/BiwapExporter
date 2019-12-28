@@ -10,6 +10,7 @@ group 'io.github.chase22'
 version '1.0'
 
 sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 repositories {
     mavenCentral()
@@ -20,6 +21,18 @@ repositories {
 
 application {
     mainClassName = "io.github.chase22.nina.Main"
+}
+
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
 }
 
 jar.enabled = false
@@ -90,6 +103,9 @@ dependencies {
     implementation group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-core', version: '1.0.1'
 
     implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+
+    implementation group: 'io.micrometer', name: 'micrometer-core', version: '1.2.1'
+    implementation group: 'io.micrometer', name: 'micrometer-registry-influx', version: '1.2.1'
 
     implementation group: 'org.jetbrains.exposed', name: 'exposed', version: '0.17.7'
     implementation group: 'com.h2database', name: 'h2', version: '1.4.197'
