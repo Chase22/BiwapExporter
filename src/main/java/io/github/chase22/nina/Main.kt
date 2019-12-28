@@ -1,12 +1,17 @@
 package io.github.chase22.nina
 
+import io.github.chase22.nina.Dependencies.ninaClientFactory
+import io.github.chase22.nina.Dependencies.warningMetricsWriter
 import io.github.chase22.nina.database.WarningsTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
+import org.jetbrains.exposed.sql.transactions.ThreadLocalTransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
+import java.sql.Connection
+import java.util.concurrent.TimeUnit
 
 object Main {
     @JvmStatic
@@ -29,7 +34,9 @@ object Main {
         val databaseUrl: String = System.getenv("NINA_DATABASE_URL") ?: "jdbc:h2:~/ninaTest"
         val databaseDriver: String = System.getenv("NINA_DATABASE_DRIVER") ?: "org.h2.Driver"
 
-        Database.connect(url = databaseUrl, driver = databaseDriver)
+        Database.connect(url = databaseUrl, driver = databaseDriver) {
+            ThreadLocalTransactionManager(it, Connection.TRANSACTION_READ_COMMITTED, 1)
+        }
 
         transaction {
             addLogger(StdOutSqlLogger)
@@ -41,9 +48,10 @@ object Main {
 
         urls.stream().forEach {
             logger.info("Adding executor for $it")
-            executor.submit(NinaClient(it), 10)
+            executor.submit(ninaClientFactory.createClient(it), 10, TimeUnit.SECONDS)
         }
 
+        executor.submit(warningMetricsWriter, 10, TimeUnit.SECONDS)
         logger.info("Finished")
     }
 }

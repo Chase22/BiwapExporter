@@ -1,40 +1,26 @@
-package io.github.chase22.nina
+package io.github.chase22.nina.client
 
-import com.fasterxml.jackson.core.JsonGenerator.Feature.IGNORE_UNKNOWN
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.KotlinModule
-import io.github.chase22.nina.InfluxDbRegistry.meterRegistry
+import io.github.chase22.nina.Dependencies.meterRegistry
 import io.github.chase22.nina.database.WarningsRepository
 import io.micrometer.core.instrument.Tag
 import io.micrometer.core.instrument.Tags
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import org.joda.time.DateTime
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.File
 import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
 
 
-class NinaClient(private val url: String) : Runnable {
-    private val client = OkHttpClient()
-    private val objectMapper = ObjectMapper()
-    private val jsonHashFactory = JsonHashFactory(objectMapper)
-    private val warningsRepository = WarningsRepository(jsonHashFactory)
-
-    init {
-        objectMapper.apply {
-            registerModule(KotlinModule())
-            registerModule(JavaTimeModule())
-            configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
-            configure(IGNORE_UNKNOWN, true)
-        }
-    }
+class NinaClient(
+        private val url: String,
+        private val client: OkHttpClient,
+        private val objectMapper: ObjectMapper,
+        private val warningsRepository: WarningsRepository
+        ) : Runnable {
 
     override fun run() {
         lateinit var response: Response
