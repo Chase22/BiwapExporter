@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit
 class NinaClient(private val url: String) : Runnable {
     private val client = OkHttpClient()
     private val objectMapper = ObjectMapper()
-    private val LOGGER: Logger = LoggerFactory.getLogger(NinaClient::class.java)
     private val jsonHashFactory = JsonHashFactory(objectMapper)
     private val warningsRepository = WarningsRepository(jsonHashFactory)
 
@@ -81,6 +80,10 @@ class NinaClient(private val url: String) : Runnable {
         } finally {
             response.close()
         }
+    }
+
+    companion object {
+        private val LOGGER: Logger = LoggerFactory.getLogger(NinaClient::class.java)
     }
 }
 
