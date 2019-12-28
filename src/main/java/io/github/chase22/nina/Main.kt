@@ -44,7 +44,7 @@ object Main {
         }
 
         //Setup executor
-        val executor = Executor(urls.size);
+        val executor = Executor(2);
 
         urls.stream().forEach {
             logger.info("Adding executor for $it")
