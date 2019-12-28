@@ -53,7 +53,7 @@ class NinaClient(
                                 meterRegistry.counter("warnings.found", Tags.of("url", url)).increment(size.toDouble())
                             }
                         }
-                                .map { it.get("identifier").toString() to it.toString() }
+                                .map { it.get("identifier").textValue() to it.toString() }
                                 .forEach { warningsRepository.addJson(it.first, it.second) }
                     }
                 }
