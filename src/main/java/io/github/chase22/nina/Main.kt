@@ -1,6 +1,6 @@
 package io.github.chase22.nina
 
-import io.github.chase22.nina.database.Warnings
+import io.github.chase22.nina.database.WarningsTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.StdOutSqlLogger
@@ -33,7 +33,7 @@ object Main {
 
         transaction {
             addLogger(StdOutSqlLogger)
-            SchemaUtils.create(Warnings)
+            SchemaUtils.create(WarningsTable)
         }
 
         //Setup executor

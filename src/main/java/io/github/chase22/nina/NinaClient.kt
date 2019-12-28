@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import io.github.chase22.nina.InfluxDbRegistry.meterRegistry
+import io.github.chase22.nina.database.WarningsRepository
 import io.micrometer.core.instrument.Tag
 import io.micrometer.core.instrument.Tags
 import okhttp3.OkHttpClient
@@ -25,8 +26,7 @@ class NinaClient(private val url: String) : Runnable {
     private val objectMapper = ObjectMapper()
     private val LOGGER: Logger = LoggerFactory.getLogger(NinaClient::class.java)
     private val jsonHashFactory = JsonHashFactory(objectMapper)
-
-    private val warningMap: MutableMap<String, WarningMeta> = HashMap()
+    private val warningsRepository = WarningsRepository(jsonHashFactory)
 
     init {
         objectMapper.apply {
@@ -69,7 +69,7 @@ class NinaClient(private val url: String) : Runnable {
                             }
                         }
                                 .map { it.get("identifier").toString() to it.toString() }
-                                .forEach { processJson(it.first, it.second) }
+                                .forEach { warningsRepository.addJson(it.first, it.second) }
                     }
                 }
             } catch (e: InterruptedIOException) {
@@ -82,39 +82,5 @@ class NinaClient(private val url: String) : Runnable {
             response.close()
         }
     }
-
-    private fun processJson(identifier: String, json: String) {
-        val current = warningMap[identifier]
-
-        if (current != null) {
-            val newHash = jsonHashFactory.getHash(json)
-            if (!current.hash.contentEquals(newHash)) {
-                val timestamp = DateTime.now().millis
-                LOGGER.info("Change detected")
-                meterRegistry.counter("warnings.changes", Tags.of("url", url)).increment()
-
-                writeJson(timestamp, identifier, current.json, "a");
-                writeJson(timestamp, identifier, json, "b");
-
-                warningMap[identifier] = WarningMeta(identifier, json, jsonHashFactory.getHash(json))
-            }
-        } else {
-            warningMap[identifier] = WarningMeta(identifier, json, jsonHashFactory.getHash(json))
-        }
-    }
-
-    private fun writeJson(timestamp: Long, identifier: String, json: String, suffix: String) {
-        val outputStream = File("$timestamp-${identifier}-${suffix}.json").outputStream()
-        val jsonTree = objectMapper.readTree(json)
-
-        objectMapper.writerWithDefaultPrettyPrinter().writeValue(outputStream, jsonTree)
-
-        outputStream.close()
-    }
 }
 
-data class WarningMeta(
-        val identifier: String,
-        val json: String,
-        val hash: String
-)
