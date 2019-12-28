@@ -21,10 +21,10 @@ class WarningsRepository(private val hashFactory: JsonHashFactory) {
                 .map { it[WarningsTable.identifier] }
     }
 
-    fun get(identifier: String, version: Int): Warning {
+    fun get(identifier: String, version: Int): Warning? {
         return Warning.find {
             WarningsTable.identifier eq identifier and (WarningsTable.version eq version)
-        }.toList().single()
+        }.firstOrNull()
     }
 
     private fun create(identifier: String, json: String, version: Int) {
@@ -38,8 +38,9 @@ class WarningsRepository(private val hashFactory: JsonHashFactory) {
     fun addJson(identifier: String, json: String) {
         transaction {
             val currentVersion = getCurrentVersion(identifier)
-            if (currentVersion != null) {
-                val currentJson = get(identifier, currentVersion).json
+            val current = get(identifier, currentVersion)
+            if (current != null) {
+                val currentJson = current.json
                 if (!hashFactory.getHash(currentJson).contentEquals(hashFactory.getHash(json))) {
                     logger.info("Writing new version ${currentVersion + 1} for ${identifier}")
                     create(identifier, json, currentVersion + 1)
