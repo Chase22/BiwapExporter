@@ -48,10 +48,10 @@ object Main {
 
         urls.stream().forEach {
             logger.info("Adding executor for $it")
-            executor.submit(ninaClientFactory.createClient(it), 10, TimeUnit.SECONDS)
+            executor.submit(ninaClientFactory.createClient(it), 10, TimeUnit.MINUTES)
         }
 
-        executor.submit(warningMetricsWriter, 10, TimeUnit.SECONDS)
+        executor.submit(warningMetricsWriter, 1, TimeUnit.MINUTES)
         logger.info("Finished")
     }
 }
