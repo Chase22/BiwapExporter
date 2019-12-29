@@ -43,8 +43,10 @@ class NinaClient(
                     }
                     .thenApply {
                         it?.let(this::writeJsonToDatabase)
+                        meterRegistry.counter("warnings.scrape.success.count", "url", url).increment()
                     }.exceptionally {
                         LOGGER.error("Error calling $url", it)
+                        meterRegistry.counter("warnings.scrape.error.count", "url", url).increment()
                     }.get()
         } catch (e: Throwable) {
             LOGGER.error("Uncaught exception in NinaClient", e)
