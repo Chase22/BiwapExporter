@@ -9,6 +9,8 @@ import io.github.chase22.nina.client.NinaClientFactory
 import io.github.chase22.nina.database.WarningsMetricsWriter
 import io.github.chase22.nina.database.WarningsRepository
 import io.micrometer.core.instrument.Clock
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics
 import io.micrometer.core.instrument.binder.logging.LogbackMetrics
 import io.micrometer.influx.InfluxMeterRegistry
 import okhttp3.OkHttpClient
@@ -33,5 +35,7 @@ object Dependencies {
         }
 
         LogbackMetrics().bindTo(meterRegistry)
+        JvmThreadMetrics().bindTo(meterRegistry)
+        JvmMemoryMetrics().bindTo(meterRegistry)
     }
 }
