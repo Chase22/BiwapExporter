@@ -4,15 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.chase22.nina.Dependencies.meterRegistry
 import io.github.chase22.nina.database.WarningsRepository
+import io.github.chase22.nina.http.executeHttpRequest
 import io.micrometer.core.instrument.Tag
 import io.micrometer.core.instrument.Tags
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.InterruptedIOException
-import java.util.concurrent.TimeUnit
 
 
 class NinaClient(
@@ -20,52 +18,55 @@ class NinaClient(
         private val client: OkHttpClient,
         private val objectMapper: ObjectMapper,
         private val warningsRepository: WarningsRepository
-        ) : Runnable {
+) : Runnable {
 
     override fun run() {
-        lateinit var response: Response
-
         try {
             val request: Request = Request.Builder().get().url(url).build()
 
             LOGGER.info("Calling $url")
 
-            try {
-                val newCall = client.newCall(request)
-                newCall.timeout().timeout(5, TimeUnit.SECONDS)
-                response = newCall.execute()
-
-                if (response.code() != 200) {
-                    LOGGER.warn("Unexpected status code ${response.code()} when calling $url")
-                    meterRegistry.counter("warnings.error-codes", Tags.of(
-                            Tag.of("url", url),
-                            Tag.of("code", response.code().toString())
-                    )).increment()
-                    return;
-                }
-
-                response.body()?.string()?.let { json ->
-                    val readTree: JsonNode = objectMapper.readTree(json)
-                    if (readTree.isArray) {
-                        readTree.toList().apply {
-                            if (size > 0) {
-                                LOGGER.info("Found $size warnings")
-                                meterRegistry.counter("warnings.found", Tags.of("url", url)).increment(size.toDouble())
-                            }
+            executeHttpRequest(client, request)
+                    .thenApply {
+                        return@thenApply if (it.code() != 200) {
+                            LOGGER.warn("Unexpected status code ${it.code()} when calling $url")
+                            writeResponseCodeMetrics(it.code().toString())
+                            null
+                        } else {
+                            it.body()?.string()
                         }
-                                .map { it.get("identifier").textValue() to it.toString() }
-                                .forEach { warningsRepository.addJson(it.first, it.second) }
                     }
-                }
-            } catch (e: InterruptedIOException) {
-                LOGGER.error("Timeout when calling $url", e)
-                meterRegistry.counter("warnings.timeouts", Tags.of("url", url))
-            }
-        } catch (e: Exception) {
-            LOGGER.error("Error calling $url", e)
-        } finally {
-            response.close()
+                    .thenApply {
+                        it?.let { objectMapper.readTree(it) }
+                    }
+                    .thenApply {
+                        it?.let(this::writeJsonToDatabase)
+                    }.exceptionally {
+                        LOGGER.error("Error calling $url", it)
+                    }.get()
+        } catch (e: Throwable) {
+            LOGGER.error("Uncaught exception in NinaClient", e)
         }
+    }
+
+    private fun writeJsonToDatabase(it: JsonNode) {
+        if (it.isArray) {
+            it.toList().apply {
+                if (size > 0) {
+                    LOGGER.info("Found $size warnings")
+                    meterRegistry.counter("warnings.found", Tags.of("url", url)).increment(size.toDouble())
+                }
+            }
+                    .map { it.get("identifier").textValue() to it.toString() }
+                    .forEach { warningsRepository.addJson(it.first, it.second) }
+        }
+    }
+
+    private fun writeResponseCodeMetrics(code: String) {
+        meterRegistry.counter("warnings.error-codes", Tags.of(
+                Tag.of("url", url),
+                Tag.of("code", code)
+        )).increment()
     }
 
     companion object {
