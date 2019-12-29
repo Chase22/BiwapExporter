@@ -1,8 +1,11 @@
 package io.github.chase22.nina
 
+import io.github.chase22.nina.Dependencies.meterRegistry
 import io.github.chase22.nina.Dependencies.ninaClientFactory
 import io.github.chase22.nina.Dependencies.warningMetricsWriter
 import io.github.chase22.nina.database.WarningsTable
+import io.micrometer.core.instrument.binder.db.DatabaseTableMetrics
+import org.h2.jdbcx.JdbcDataSource
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.StdOutSqlLogger
@@ -31,12 +34,13 @@ object Main {
         logger.info("Started")
 
         // Setup Database
-        val databaseUrl: String = System.getenv("NINA_DATABASE_URL") ?: "jdbc:h2:~/ninaTest"
-        val databaseDriver: String = System.getenv("NINA_DATABASE_DRIVER") ?: "org.h2.Driver"
+        val datasource = JdbcDataSource()
+        datasource.setUrl("jdbc:h2:~/ninaTest")
 
-        Database.connect(url = databaseUrl, driver = databaseDriver) {
+        Database.connect(datasource) {
             ThreadLocalTransactionManager(it, Connection.TRANSACTION_READ_COMMITTED, 1)
         }
+        DatabaseTableMetrics.monitor(meterRegistry, "WARNINGS", "h2", datasource)
 
         transaction {
             addLogger(StdOutSqlLogger)
