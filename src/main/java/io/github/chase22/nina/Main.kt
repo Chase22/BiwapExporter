@@ -46,10 +46,14 @@ object Main {
         //Setup executor
         val executor = Executor(2);
 
+
         urls.stream().forEach {
             logger.info("Adding executor for $it")
             executor.submit(ninaClientFactory.createClient(it), 10, TimeUnit.MINUTES)
         }
+
+        ScrapeMetricsWriter.initialize(urls)
+        executor.submit(ScrapeMetricsWriter, 10, TimeUnit.SECONDS)
 
         executor.submit(warningMetricsWriter, 1, TimeUnit.MINUTES)
         logger.info("Finished")

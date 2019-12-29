@@ -3,6 +3,7 @@ package io.github.chase22.nina.client
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.chase22.nina.Dependencies.meterRegistry
+import io.github.chase22.nina.ScrapeMetricsWriter
 import io.github.chase22.nina.database.WarningsRepository
 import io.github.chase22.nina.http.executeHttpRequest
 import io.micrometer.core.instrument.Tag
@@ -11,6 +12,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.time.LocalDateTime
 
 
 class NinaClient(
@@ -59,6 +61,8 @@ class NinaClient(
             }
                     .map { it.get("identifier").textValue() to it.toString() }
                     .forEach { warningsRepository.addJson(it.first, it.second) }
+
+            ScrapeMetricsWriter.put(url, LocalDateTime.now())
         }
     }
 
